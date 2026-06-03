@@ -5,8 +5,8 @@
 export const site = {
   name: "Sr. Moritz",
   tagline: "Burguer Artesanal",
-  city: "[CIDADE]",
-  neighborhood: "[bairro]",
+  city: "Fortaleza",
+  neighborhood: "Messejana",
 
   rating: 4.9,
   served: "+12 mil",
@@ -26,7 +26,7 @@ export const site = {
   // Localização
   address: {
     street: "[Rua Exemplo, 123]",
-    area: "[Bairro] · [Cidade] – [UF]",
+    area: "Messejana · Fortaleza – CE",
     full: "[Rua Exemplo, 123, Bairro, Cidade – UF, CEP]",
   },
   geo: { lat: 0, lng: 0 }, // preencher para JSON-LD / mapa

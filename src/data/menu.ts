@@ -56,18 +56,24 @@ export const combos: Combo[] = [
   {
     id: "solo-cavalheiro",
     name: "Solo do Cavalheiro",
-    description: "Burger + fritas + refri.",
+    description: "A pedida certeira pra matar a fome sozinho.",
     priceFrom: 49,
     price: 39,
     image: "/assets/produtos/placeholder.svg",
     highlight: true,
+    badge: "Mais pedido",
+    serves: "1 pessoa",
+    items: ["1 burger artesanal à escolha", "Fritas rústicas", "Refri lata gelado"],
   },
   {
     id: "dupla-moritz",
     name: "Dupla Moritz",
-    description: "2 burgers + fritas grande + 2 refris.",
+    description: "Pra dividir a dois — ou não dividir nada.",
+    priceFrom: 88,
     price: 72,
     image: "/assets/produtos/placeholder.svg",
+    serves: "2 pessoas",
+    items: ["2 burgers artesanais", "Fritas grande pra dividir", "2 refris lata"],
   },
 ];
 

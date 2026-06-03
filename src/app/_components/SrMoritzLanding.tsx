@@ -6,11 +6,10 @@ import {
   motion,
   useScroll,
   useTransform,
-  useInView,
   type Variants,
 } from "framer-motion";
 import Lenis from "lenis";
-import { products, combos, reviews, burgerFeatures, menuMais } from "@/data/menu";
+import { products, combos, burgerFeatures, menuMais } from "@/data/menu";
 import { site } from "@/lib/site";
 import { brl } from "@/lib/format";
 import "./sr-moritz.css";
@@ -50,14 +49,6 @@ function El({ name, alt = "", className = "" }: { name: string; alt?: string; cl
 
 function Bigode({ className = "" }: { className?: string }) {
   return <El name="el-bigodon" className={className} />;
-}
-
-function Seal({ className = "", wobble = true }: { className?: string; wobble?: boolean }) {
-  return (
-    <div className={`relative aspect-square ${wobble ? "sm-seal" : ""} ${className}`}>
-      <Image src={`${A}/elementos/selo-feito-na-hora.png`} alt="Feito na hora" fill sizes="160px" className="object-contain" />
-    </div>
-  );
 }
 
 function StarRow({ n = 5, size = 18, tone = "gold", className = "" }: { n?: number; size?: number; tone?: "gold" | "cream"; className?: string }) {
@@ -118,46 +109,82 @@ function OutlineButton({ children, href, onGreen = false, className = "" }: { ch
 /* ───────────────────────── Diferenciais — grade catálogo ───────────────────────── */
 const featureEl = ["espatula-smash", "chapeu-de-cozinha", "batata-com-cheddar", "el-bigodon"];
 
-/* ───────────────────────── Avaliações: nota ───────────────────────── */
-function RatingSummary() {
-  const ref = useRef<HTMLDivElement>(null);
-  const inView = useInView(ref, { once: true, amount: 0.4 });
-  const [val, setVal] = useState(0);
-  const target = site.rating;
-  useEffect(() => {
-    if (!inView) return;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let frame = 0;
-    if (reduce) { frame = requestAnimationFrame(() => setVal(target)); return () => cancelAnimationFrame(frame); }
-    const start = performance.now();
-    const tick = (now: number) => { const t = Math.min(1, (now - start) / 1100); setVal(target * (1 - Math.pow(1 - t, 3))); if (t < 1) frame = requestAnimationFrame(tick); };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [inView, target]);
-  return (
-    <div ref={ref} className="flex flex-col items-center justify-center rounded-2xl border border-gold/30 bg-moritz-700/30 p-10 text-center text-cream">
-      <span className="font-serif text-7xl font-black text-gold">{val.toFixed(1).replace(".", ",")}</span>
-      <StarRow n={5} size={18} className="mt-3" />
-      <p className="mt-4 text-xs uppercase tracking-[.24em] text-cream/65">Nota média</p>
-      <p className="mt-1 text-sm text-cream/55">{site.served} servidos</p>
-    </div>
-  );
-}
-
 /* ───────────────────────── PÁGINA ───────────────────────── */
+const navLinks: [string, string][] = [
+  ["Cardápio", "#cardapio"],
+  ["Combos", "#combos"],
+  ["Diferenciais", "#diferenciais"],
+  ["Onde estamos", "#onde-estamos"],
+];
+
+/* ───────── opções do "Monte seu combo" ───────── */
+type ComboOpt = { name: string; price: number };
+const burgerOpts: ComboOpt[] = [
+  { name: "El Bigodón", price: 37 },
+  { name: "Duble Smash", price: 34 },
+  { name: "Clássico Moritz", price: 29 },
+  { name: "Smash Bacon", price: 36 },
+];
+const sideOpts: ComboOpt[] = [
+  { name: "Batata-cheddar", price: 24 },
+  { name: "Onion rings", price: 19 },
+  { name: "Fritas rústicas", price: 16 },
+  { name: "Sem acompanhamento", price: 0 },
+];
+const drinkOpts: ComboOpt[] = [
+  { name: "Refri lata", price: 8 },
+  { name: "Suco natural", price: 10 },
+  { name: "Milk-shake", price: 15 },
+  { name: "Sem bebida", price: 0 },
+];
+
 export default function SrMoritzLanding() {
   const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [burgerI, setBurgerI] = useState(0);
+  const [sideI, setSideI] = useState(0);
+  const [drinkI, setDrinkI] = useState(0);
+  const lenisRef = useRef<Lenis | null>(null);
+
+  const comboPick = [burgerOpts[burgerI], sideOpts[sideI], drinkOpts[drinkI]];
+  const comboTotal = comboPick.reduce((s, o) => s + o.price, 0);
+  const comboHref = `https://wa.me/${site.whatsapp}?text=${encodeURIComponent(
+    `Olá, Sr. Moritz! Quero montar meu combo:\n• ${comboPick[0].name}\n• ${comboPick[1].name}\n• ${comboPick[2].name}\nTotal: ${brl(comboTotal)}`
+  )}`;
+  const comboSteps = [
+    { label: "1 · Escolha o burger", opts: burgerOpts, sel: burgerI, set: setBurgerI },
+    { label: "2 · Acompanhamento", opts: sideOpts, sel: sideI, set: setSideI },
+    { label: "3 · Bebida", opts: drinkOpts, sel: drinkI, set: setDrinkI },
+  ];
+
+  // combos: o destaque vira "pôster"; os demais ficam ao lado
+  const mainCombo = combos.find((c) => c.highlight) ?? combos[0];
+  const otherCombos = combos.filter((c) => c !== mainCombo);
+  const comboOff = (c: (typeof combos)[number]) => (c.priceFrom != null ? Math.round((1 - c.price / c.priceFrom) * 100) : null);
+  const comboOrder = (c: (typeof combos)[number]) => `https://wa.me/${site.whatsapp}?text=${encodeURIComponent(`Olá, Sr. Moritz! Quero o combo ${c.name} (${brl(c.price)}).`)}`;
   const heroRef = useRef<HTMLDivElement>(null);
   const { scrollYProgress: heroProg } = useScroll({ target: heroRef, offset: ["start start", "end start"] });
   const emblemY = useTransform(heroProg, [0, 1], [0, 80]);
 
+  // navegação por âncora — roteada pelo Lenis (o scroll suave engole o salto nativo)
+  const goTo = (e: React.MouseEvent<HTMLAnchorElement>, href: string) => {
+    if (!href.startsWith("#")) return;
+    const el = document.querySelector(href);
+    if (!el) return;
+    e.preventDefault();
+    setMenuOpen(false);
+    if (lenisRef.current) lenisRef.current.scrollTo(el as HTMLElement, { offset: -72 });
+    else el.scrollIntoView({ behavior: "smooth" });
+  };
+
   useEffect(() => {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const lenis = new Lenis({ duration: 1.1, smoothWheel: true });
+    lenisRef.current = lenis;
     let raf = 0;
     const loop = (t: number) => { lenis.raf(t); raf = requestAnimationFrame(loop); };
     raf = requestAnimationFrame(loop);
-    return () => { cancelAnimationFrame(raf); lenis.destroy(); };
+    return () => { cancelAnimationFrame(raf); lenis.destroy(); lenisRef.current = null; };
   }, []);
 
   useEffect(() => {
@@ -172,19 +199,60 @@ export default function SrMoritzLanding() {
       <div className="sm-grain" />
 
       {/* NAV */}
-      <header className={`fixed inset-x-0 top-0 z-40 transition-all duration-300 ${scrolled ? "bg-moritz-900/95 py-2.5 shadow-lg backdrop-blur" : "bg-transparent py-4"}`}>
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 md:px-10">
-          <a href="#topo" className="flex items-center gap-3" aria-label="Sr. Moritz — início">
-            <Logo cream priority className={`transition-all ${scrolled ? "h-10 w-10" : "h-12 w-12"}`} />
-            <span className="font-serif text-lg font-black uppercase tracking-wide text-cream">Sr. Moritz</span>
+      <header className={`fixed inset-x-0 top-0 z-40 transition-all duration-300 ${scrolled || menuOpen ? "bg-moritz-900/95 shadow-lg backdrop-blur" : "bg-transparent"}`}>
+        {/* barra principal */}
+        <div className={`mx-auto flex max-w-6xl items-center justify-between px-6 transition-all duration-300 md:px-10 ${scrolled ? "py-2.5" : "py-3.5"}`}>
+          <a href="#topo" onClick={(e) => goTo(e, "#topo")} className="group flex items-center gap-3" aria-label="Sr. Moritz — início">
+            <span className={`grid place-items-center rounded-full border border-gold/40 bg-moritz-700/30 p-1.5 transition-all duration-300 group-hover:border-gold ${scrolled ? "scale-90" : "scale-100"}`}>
+              <Logo cream priority className="h-12 w-12" />
+            </span>
+            <span className="flex flex-col leading-none">
+              <span className="font-serif text-lg font-black uppercase tracking-wide text-cream">Sr. Moritz</span>
+              <span className="text-[.56rem] font-bold uppercase tracking-[.3em] text-gold/80">Burguer Artesanal</span>
+            </span>
           </a>
-          <nav className="hidden gap-9 md:flex">
-            {[["Cardápio", "#cardapio"], ["Diferenciais", "#diferenciais"], ["Onde estamos", "#onde-estamos"]].map(([l, h]) => (
-              <a key={l} href={h} className="text-[.74rem] font-bold uppercase tracking-[.16em] text-cream/75 transition-colors hover:text-gold">{l}</a>
+
+          <nav className="hidden items-center gap-9 lg:flex">
+            {navLinks.map(([l, h]) => (
+              <a key={l} href={h} onClick={(e) => goTo(e, h)} className="group relative text-[.74rem] font-bold uppercase tracking-[.16em] text-cream/75 transition-colors hover:text-gold">
+                {l}
+                <span className="absolute -bottom-1.5 left-0 h-px w-full origin-left scale-x-0 bg-gold transition-transform duration-300 group-hover:scale-x-100" />
+              </a>
             ))}
           </nav>
-          <GoldButton className="!px-5 !py-2.5">Peça agora</GoldButton>
+
+          <div className="flex items-center gap-3">
+            <GoldButton className="!hidden !px-5 !py-2.5 sm:!inline-flex">Peça agora</GoldButton>
+            <button
+              type="button"
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-label={menuOpen ? "Fechar menu" : "Abrir menu"}
+              aria-expanded={menuOpen}
+              className="grid h-11 w-11 place-items-center rounded-full border border-gold/40 text-cream transition-colors hover:border-gold hover:text-gold lg:hidden"
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                {menuOpen ? (
+                  <><path d="M6 6l12 12" /><path d="M18 6L6 18" /></>
+                ) : (
+                  <><path d="M3 6h18" /><path d="M3 12h18" /><path d="M3 18h18" /></>
+                )}
+              </svg>
+            </button>
+          </div>
         </div>
+
+        {/* menu mobile */}
+        <motion.div initial={false} animate={{ height: menuOpen ? "auto" : 0 }} transition={{ duration: 0.35, ease: EASE }} className="overflow-hidden border-t border-gold/15 lg:hidden">
+          <nav className="mx-auto flex max-w-6xl flex-col gap-1 px-6 py-4">
+            {navLinks.map(([l, h]) => (
+              <a key={l} href={h} onClick={(e) => goTo(e, h)} className="flex items-center justify-between rounded-xl px-3 py-3 font-serif text-lg font-bold uppercase text-cream transition-colors hover:bg-moritz-700/40 hover:text-gold">
+                {l}
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gold/60"><path d="M9 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </a>
+            ))}
+            <GoldButton className="mt-3 !flex !py-3.5">Peça agora</GoldButton>
+          </nav>
+        </motion.div>
       </header>
 
       {/* ───── HERO (verde, emblema centrado) ───── */}
@@ -242,22 +310,6 @@ export default function SrMoritzLanding() {
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="animate-bounce"><path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </div>
       </section>
-
-      {/* MARQUEE */}
-      <div className="sm-marquee overflow-hidden border-y-4 border-gold bg-moritz-900">
-        <div className="sm-marquee-track">
-          {[0, 1].map((k) => (
-            <span key={k} className="flex items-center py-4">
-              {["Carne fresca todo dia", "Pão artesanal", "Feito na hora", `★ ${rating}`, `${site.served} servidos`].map((m) => (
-                <span key={m} className="flex items-center">
-                  <span className="font-serif text-[1.3rem] italic text-cream">{m}</span>
-                  <Bigode className="mx-7 h-7 w-16 shrink-0" />
-                </span>
-              ))}
-            </span>
-          ))}
-        </div>
-      </div>
 
       {/* ───── 01 · CARDÁPIO (creme) ───── */}
       <section id="cardapio" className="bg-cream py-24 md:py-28">
@@ -345,26 +397,89 @@ export default function SrMoritzLanding() {
 
       {/* ───── 03 · COMBOS (creme) ───── */}
       <section id="combos" className="bg-cream py-24">
-        <div className="mx-auto max-w-5xl px-6 md:px-10">
-          <Heading num="03" title="Combos & Promoções" sub="Mais burger, menos preço — do jeito que um cavalheiro gosta." />
-          <div className="mt-14 grid gap-6 md:grid-cols-2">
-            {combos.map((c, i) => {
-              const off = c.priceFrom != null ? Math.round((1 - c.price / c.priceFrom) * 100) : null;
-              return (
-                <motion.article key={c.id} {...reveal} transition={{ delay: i * 0.08 }} whileHover={{ y: -6 }} className={`relative rounded-2xl bg-surface p-8 ${c.highlight ? "border-2 border-moritz-700" : "border border-ink/12"}`}>
-                  {off != null && <div className="sm-seal absolute -right-3 -top-3 grid h-16 w-16 place-items-center rounded-full bg-gold text-center font-serif text-sm font-black text-moritz-900 shadow-lg">-{off}%</div>}
-                  <h3 className="font-serif text-2xl font-black uppercase text-moritz-900">{c.name}</h3>
-                  <p className="mt-2 text-ink-soft">{c.description}</p>
-                  <div className="mt-6 flex items-center justify-between">
+        <div className="mx-auto max-w-6xl px-6 md:px-10">
+          <Heading num="03" center title="Combos & Promoções" sub="Mais burger, menos preço — do jeito que um cavalheiro gosta." />
+          <div className="mt-14 grid gap-6 lg:grid-cols-[1.6fr_1fr] lg:items-stretch">
+            {/* ── PÔSTER PRINCIPAL (verde) ── */}
+            <motion.div {...reveal} className="relative flex flex-col overflow-hidden rounded-3xl bg-moritz-900 p-8 text-cream md:p-11">
+              {/* sunburst + moldura */}
+              <div className="pointer-events-none absolute -right-28 -top-28 h-80 w-80 text-gold opacity-[0.07]">
+                <div className="sm-spin h-full w-full" style={{ background: "repeating-conic-gradient(from 0deg, currentColor 0deg 4deg, transparent 4deg 12deg)", WebkitMaskImage: "radial-gradient(closest-side,#000,transparent)", maskImage: "radial-gradient(closest-side,#000,transparent)" }} />
+              </div>
+              <div className="pointer-events-none absolute inset-3 rounded-2xl border border-gold/20" />
+              {comboOff(mainCombo) != null && (
+                <div className="sm-seal absolute right-6 top-6 z-10 grid h-20 w-20 place-items-center rounded-full bg-gold text-center font-serif text-lg font-black leading-none text-moritz-900 shadow-lg">-{comboOff(mainCombo)}%</div>
+              )}
+
+              <div className="relative z-[1] grid flex-1 items-center gap-4 sm:grid-cols-[1.45fr_.9fr]">
+                <div>
+                  <span className="inline-flex items-center gap-2 text-[.7rem] font-bold uppercase tracking-[.26em] text-gold">
+                    <GStar className="h-3 w-3" /> Oferta da semana
+                  </span>
+                  <h3 className="mt-4 font-serif text-[clamp(2rem,4.6vw,3.3rem)] font-black uppercase leading-[.92] text-cream">{mainCombo.name}</h3>
+                  <p className="mt-2 max-w-sm text-cream/70">{mainCombo.description}</p>
+
+                  {mainCombo.items && (
+                    <ul className="mt-5 space-y-2">
+                      {mainCombo.items.map((it) => (
+                        <li key={it} className="flex items-center gap-2.5 text-[.95rem] text-cream/85">
+                          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 text-gold"><path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                          {it}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+
+                  <div className="mt-7 flex flex-wrap items-end gap-x-5 gap-y-4">
                     <span className="flex items-baseline gap-2">
-                      {c.priceFrom != null && <span className="text-base text-ink-soft line-through">{brl(c.priceFrom)}</span>}
+                      {mainCombo.priceFrom != null && <span className="text-lg text-cream/45 line-through">{brl(mainCombo.priceFrom)}</span>}
+                      <span className="font-serif text-[3.4rem] font-black leading-none text-gold">{brl(mainCombo.price)}</span>
+                    </span>
+                    <GoldButton href={comboOrder(mainCombo)} className="!px-8 !py-3.5">Pedir agora</GoldButton>
+                  </div>
+                </div>
+
+                {/* mascote */}
+                <div className="pointer-events-none relative hidden self-end justify-self-center sm:block">
+                  <Mascot pose="servindo" sizes="240px" className="h-auto w-full max-w-[240px] drop-shadow-[0_14px_34px_rgba(0,0,0,.45)]" />
+                </div>
+              </div>
+            </motion.div>
+
+            {/* ── COMBOS SECUNDÁRIOS + CROSS-LINK ── */}
+            <div className="flex flex-col gap-6">
+              {otherCombos.map((c, i) => (
+                <motion.article key={c.id} {...reveal} transition={{ delay: 0.1 + i * 0.08 }} whileHover={{ y: -6 }} className="relative flex flex-1 flex-col justify-between overflow-hidden rounded-3xl border border-ink/12 bg-surface p-7">
+                  {comboOff(c) != null && <span className="absolute right-5 top-5 rounded-full bg-gold px-2.5 py-1 text-[.6rem] font-bold uppercase tracking-wide text-moritz-900">-{comboOff(c)}%</span>}
+                  <div>
+                    {c.serves && (
+                      <span className="inline-flex items-center gap-1.5 rounded-full bg-moritz-700/[.08] px-3 py-1 text-[.62rem] font-bold uppercase tracking-[.12em] text-moritz-900">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="12" cy="8" r="3.5" /><path d="M5 20c0-3.5 3-6 7-6s7 2.5 7 6" strokeLinecap="round" /></svg>
+                        Serve {c.serves}
+                      </span>
+                    )}
+                    <h3 className="mt-3 font-serif text-2xl font-black uppercase leading-none text-moritz-900">{c.name}</h3>
+                    <p className="mt-1.5 text-sm text-ink-soft">{c.description}</p>
+                  </div>
+                  <div className="mt-6 flex items-end justify-between border-t border-ink/10 pt-5">
+                    <span className="flex items-baseline gap-2">
+                      {c.priceFrom != null && <span className="text-sm text-ink-soft line-through">{brl(c.priceFrom)}</span>}
                       <span className="font-serif text-3xl font-black text-gold-deep">{brl(c.price)}</span>
                     </span>
-                    <GoldButton className="!px-6">Pedir</GoldButton>
+                    <GoldButton href={comboOrder(c)} className="!px-6 !py-3">Pedir</GoldButton>
                   </div>
                 </motion.article>
-              );
-            })}
+              ))}
+
+              {/* cross-link pro "monte seu combo" */}
+              <motion.a {...reveal} href="#monte" onClick={(e) => goTo(e, "#monte")} className="group flex items-center justify-between gap-4 rounded-3xl border border-dashed border-moritz-700/40 bg-moritz-700/[.04] p-6 transition-colors hover:bg-moritz-700/[.09]">
+                <span>
+                  <span className="font-serif text-lg font-black uppercase text-moritz-900">Monte o seu</span>
+                  <span className="mt-0.5 block text-sm text-ink-soft">Burger + acompanhamento + bebida do seu jeito.</span>
+                </span>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="shrink-0 text-gold-deep transition-transform group-hover:translate-x-1"><path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+              </motion.a>
+            </div>
           </div>
         </div>
       </section>
@@ -373,36 +488,85 @@ export default function SrMoritzLanding() {
       <section className="bg-moritz-900 py-24 text-cream">
         <div className="mx-auto max-w-5xl px-6 md:px-10">
           <Heading num="04" onGreen center title="Pedir é coisa de um minuto" sub="Sem complicação, do jeito que um cavalheiro merece." />
-          <div className="relative mt-16 grid gap-12 md:grid-cols-3">
-            <div className="sm-dotted absolute left-[16%] right-[16%] top-8 hidden h-px md:block" aria-hidden />
+          <ol className="relative mx-auto mt-12 max-w-md space-y-8 md:mt-16 md:grid md:max-w-none md:grid-cols-3 md:gap-12 md:space-y-0">
+            {/* conector — vertical no mobile, horizontal no desktop */}
+            <div className="absolute left-9 top-9 bottom-9 w-px border-l-2 border-dashed border-gold/30 md:hidden" aria-hidden />
+            <div className="sm-dotted absolute left-[16%] right-[16%] top-9 hidden h-px md:block" aria-hidden />
             {[["1", "Escolha", "Bate o olho no cardápio e escolhe o seu campeão."], ["2", "Confirme", "Manda o pedido pelo WhatsApp ou app de delivery."], ["3", "Devore", "Eu levo quentinho até a sua porta. Bom apetite."]].map(([n, t, d], i) => (
-              <motion.div key={n} {...reveal} transition={{ delay: i * 0.1 }} className="relative text-center">
-                <div className="mx-auto grid h-16 w-16 place-items-center rounded-full border-2 border-gold bg-moritz-900 font-serif text-2xl font-black text-gold">{n}</div>
-                <h3 className="mt-5 font-serif text-xl font-bold uppercase text-cream">{t}</h3>
-                <p className="mx-auto mt-2 max-w-xs text-cream/65">{d}</p>
-              </motion.div>
+              <motion.li key={n} {...reveal} transition={{ delay: i * 0.1 }} className="relative flex items-center gap-5 text-left md:flex-col md:items-center md:text-center">
+                <div className="relative z-[1] grid h-[4.5rem] w-[4.5rem] shrink-0 place-items-center rounded-full border-2 border-gold bg-moritz-900 font-serif text-[2rem] leading-none font-black text-gold">{n}</div>
+                <div>
+                  <h3 className="font-serif text-xl font-bold uppercase text-cream md:mt-5">{t}</h3>
+                  <p className="mt-1.5 text-cream/65 md:mx-auto md:mt-2 md:max-w-xs">{d}</p>
+                </div>
+              </motion.li>
             ))}
-          </div>
+          </ol>
           <div className="mt-14 flex justify-center"><GoldButton className="!px-8">Fazer meu pedido</GoldButton></div>
         </div>
       </section>
 
-      {/* ───── 05 · HISTÓRIA (creme) ───── */}
-      <section id="historia" className="bg-cream py-24">
-        <div className="mx-auto grid max-w-6xl items-center gap-14 px-6 md:grid-cols-2 md:px-10">
-          <motion.div {...reveal}>
-            <Heading num="05" title={<>Tem nome,<br />tem história</>} />
-            <div className="mt-6 space-y-4 text-[1.08rem] leading-relaxed text-[#4a463f]">
-              <p>O Sr. Moritz nasceu da teimosia de fazer um hambúrguer à moda antiga — tudo na hora, sem atalho. De uma chapa e uma receita só, virou ponto de encontro de quem leva sabor a sério.</p>
-              <p className="font-serif text-xl italic text-moritz-900">“Um bom burger não tem pressa. Tem capricho.”</p>
+      {/* ───── 05 · MONTE SEU COMBO (creme) ───── */}
+      <section id="monte" className="bg-cream py-24">
+        <div className="mx-auto max-w-6xl px-6 md:px-10">
+          <Heading num="05" title={<>Monte do<br />seu jeito</>} sub="Escolhe o burger, o acompanhamento e a bebida — eu somo tudo e já te mando o pedido pronto pelo WhatsApp." />
+          <div className="mt-14 grid gap-8 lg:grid-cols-[1.55fr_1fr] lg:items-start">
+            {/* escolhas */}
+            <div className="space-y-9">
+              {comboSteps.map((st) => (
+                <div key={st.label}>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[.72rem] font-bold uppercase tracking-[.26em] text-gold-deep">{st.label}</span>
+                    <span className="h-px flex-1 bg-ink/10" />
+                  </div>
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {st.opts.map((o, i) => {
+                      const active = st.sel === i;
+                      return (
+                        <button
+                          key={o.name}
+                          type="button"
+                          onClick={() => st.set(i)}
+                          aria-pressed={active}
+                          className={`flex items-center justify-between rounded-2xl border px-5 py-4 text-left transition-all ${active ? "border-moritz-700 bg-moritz-700/[.06] shadow-[0_8px_24px_rgba(30,58,30,.1)]" : "border-ink/12 bg-surface hover:border-moritz-700/40"}`}
+                        >
+                          <span className="flex items-center gap-3">
+                            <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 ${active ? "border-moritz-700" : "border-ink/25"}`}>
+                              {active && <span className="h-2.5 w-2.5 rounded-full bg-moritz-700" />}
+                            </span>
+                            <span className="font-serif text-lg font-bold text-moritz-900">{o.name}</span>
+                          </span>
+                          <span className="font-serif font-black text-gold-deep">{o.price ? `+${brl(o.price)}` : "—"}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
-          </motion.div>
-          <motion.div {...reveal} className="relative">
-            <div className="relative aspect-[16/11] overflow-hidden rounded-2xl border border-ink/10">
-              <Image src={`${A}/aplicacoes/fachada-e-placa.png`} alt="A fachada do Sr. Moritz" fill sizes="(max-width:768px) 100vw, 540px" className="object-cover" />
-            </div>
-            <div className="absolute -bottom-6 -left-4 w-24"><Seal /></div>
-          </motion.div>
+
+            {/* resumo */}
+            <aside className="rounded-3xl border-2 border-moritz-700 bg-surface p-8 lg:sticky lg:top-28">
+              <div className="flex items-center gap-3">
+                <Bigode className="h-6 w-14" />
+                <h3 className="font-serif text-2xl font-black uppercase text-moritz-900">Seu combo</h3>
+              </div>
+              <ul className="mt-6 space-y-3 border-b border-ink/10 pb-6">
+                {comboPick.map((o, i) => (
+                  <li key={i} className="flex items-center justify-between gap-3">
+                    <span className="text-[.98rem] text-ink">{o.name}</span>
+                    <span className="font-semibold text-ink-soft">{o.price ? brl(o.price) : "—"}</span>
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-6 flex items-end justify-between">
+                <span className="text-xs font-bold uppercase tracking-[.22em] text-ink-soft">Total</span>
+                <span className="font-serif text-[2.75rem] font-black leading-none text-gold-deep">{brl(comboTotal)}</span>
+              </div>
+              <GoldButton href={comboHref} className="mt-7 !flex w-full !py-4">Pedir no WhatsApp</GoldButton>
+              <p className="mt-3 text-center text-xs text-ink-soft">Entrega {site.deliveryTime} · Feito na hora</p>
+            </aside>
+          </div>
         </div>
       </section>
 
@@ -424,24 +588,49 @@ export default function SrMoritzLanding() {
         </div>
       </section>
 
-      {/* ───── 07 · AVALIAÇÕES (creme) ───── */}
-      <section id="avaliacoes" className="bg-cream py-24">
+      {/* ───── 07 · SEJA UM DOS PRIMEIROS (creme) ───── */}
+      <section id="primeiros" className="bg-cream py-24">
         <div className="mx-auto max-w-6xl px-6 md:px-10">
-          <Heading num="07" title="O que dizem por aí" sub="Quem provou, voltou." />
-          <div className="mt-14 grid gap-6 lg:grid-cols-[1fr_1.7fr] lg:items-stretch">
-            <RatingSummary />
-            <div className="grid gap-6 sm:grid-cols-3">
-              {reviews.map((r, i) => (
-                <motion.article key={r.id} {...reveal} transition={{ delay: i * 0.08 }} className="flex h-full flex-col rounded-2xl border border-ink/12 bg-surface p-6">
-                  <StarRow n={r.rating} size={16} />
-                  <p className="mt-4 flex-1 text-[.95rem] text-ink">“{r.text}”</p>
-                  <div className="mt-5 flex items-center justify-between border-t border-ink/10 pt-4">
-                    <span className="font-serif font-bold text-moritz-900">{r.name}</span>
-                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-ink-soft"><span className={`h-2 w-2 rounded-full ${r.source === "Google" ? "bg-moritz-500" : "bg-gold"}`} />{r.source}</span>
-                  </div>
-                </motion.article>
-              ))}
-            </div>
+          <Heading num="07" title={<>Seja um dos<br />primeiros</>} sub="A chapa acabou de esquentar — e a primeira fornada é sua. Entra agora e leve um agrado de boas-vindas." />
+          <div className="mt-14 grid gap-10 lg:grid-cols-2 lg:items-center">
+            {/* texto + cupom */}
+            <motion.div {...reveal}>
+              <span className="inline-flex items-center gap-2 rounded-full bg-gold/15 px-3.5 py-1.5 text-[.66rem] font-bold uppercase tracking-[.18em] text-gold-deep">
+                <GStar className="h-3 w-3" /> Recém-saído da chapa
+              </span>
+              <ul className="mt-7 space-y-3.5">
+                {["Brinde surpresa no seu 1º pedido", "Seu nome na lista dos fundadores", "Promoções em primeira mão, antes de todo mundo"].map((t) => (
+                  <li key={t} className="flex items-center gap-3 text-[1.02rem] text-[#4a463f]">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" className="shrink-0 text-gold-deep"><path d="M20 6L9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    {t}
+                  </li>
+                ))}
+              </ul>
+
+              {/* cupom */}
+              <div className="mt-8 flex items-center gap-4 rounded-2xl border-2 border-dashed border-moritz-700/40 bg-moritz-700/[.04] p-5">
+                <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-moritz-900 text-gold">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 12v8H4v-8M2 7h20v5H2zM12 22V7M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7zM12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                </div>
+                <div>
+                  <p className="font-serif text-lg font-black uppercase leading-none text-moritz-900">Manda “QUERO” no WhatsApp</p>
+                  <p className="mt-1 text-sm text-ink-soft">A gente responde com seu brinde de boas-vindas.</p>
+                </div>
+              </div>
+
+              <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+                <GoldButton href={`https://wa.me/${site.whatsapp}?text=${encodeURIComponent("Olá, Sr. Moritz! QUERO ser um dos primeiros a provar. 🍔")}`} className="!px-8">Quero ser o primeiro</GoldButton>
+                <OutlineButton href={site.instagram.url}>Seguir {site.instagram.handle}</OutlineButton>
+              </div>
+            </motion.div>
+
+            {/* mascote — oculto no mobile */}
+            <motion.div {...reveal} className="relative mx-auto hidden w-full max-w-sm lg:block">
+              <div className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[120%] w-[120%] -translate-x-1/2 -translate-y-1/2 text-gold opacity-[0.12]">
+                <div className="sm-spin h-full w-full" style={{ background: "repeating-conic-gradient(from 0deg, currentColor 0deg 4deg, transparent 4deg 12deg)", WebkitMaskImage: "radial-gradient(closest-side,#000 10%,transparent 70%)", maskImage: "radial-gradient(closest-side,#000 10%,transparent 70%)" }} />
+              </div>
+              <Mascot pose="apresentando" sizes="420px" className="h-auto w-full drop-shadow-[0_18px_40px_rgba(30,58,30,.18)]" />
+            </motion.div>
           </div>
         </div>
       </section>
@@ -477,7 +666,7 @@ export default function SrMoritzLanding() {
       {/* ───── CTA FINAL (creme) ───── */}
       <section className="relative overflow-hidden bg-cream py-24">
         <div className="mx-auto flex max-w-5xl flex-col items-center gap-8 px-6 text-center md:px-10">
-          <Logo className="h-24 w-24" />
+          <Logo className="h-40 w-40" />
           <motion.h2 {...reveal} className="font-serif text-[clamp(2.2rem,5vw,3.8rem)] font-black uppercase leading-[1] text-moritz-900">
             Então… vai encarar o <span className="italic text-gold-deep">melhor burger</span> da cidade?
           </motion.h2>
@@ -488,29 +677,63 @@ export default function SrMoritzLanding() {
 
       {/* ───── FOOTER (carvão) ───── */}
       <footer className="bg-ink text-cream/90">
-        <div className="mx-auto grid max-w-6xl gap-10 px-6 py-16 md:grid-cols-[1.4fr_1fr_1fr_1fr] md:px-10">
+        {/* corpo */}
+        <div className="mx-auto grid max-w-6xl gap-10 px-6 py-16 md:grid-cols-[1.5fr_1fr_1fr_1.3fr] md:px-10">
+          {/* marca + social */}
           <div>
-            <Logo cream className="h-20 w-20" />
-            <p className="mt-4 max-w-xs text-sm text-cream/60">{site.tagline}. Feito na hora, à moda do Sr. Moritz.</p>
+            <div className="flex items-center gap-3">
+              <Logo cream className="h-16 w-16" />
+              <span className="flex flex-col leading-none">
+                <span className="font-serif text-lg font-black uppercase tracking-wide text-cream">Sr. Moritz</span>
+                <span className="text-[.56rem] font-bold uppercase tracking-[.3em] text-gold/80">Burguer Artesanal</span>
+              </span>
+            </div>
+            <p className="mt-5 max-w-xs text-sm leading-relaxed text-cream/55">{site.tagline}. Feito na hora, à moda antiga — blend autoral, pão dourado na manteiga e muito capricho.</p>
+            <div className="mt-6 flex items-center gap-3">
+              <a href={site.instagram.url} target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="grid h-10 w-10 place-items-center rounded-full border border-cream/15 text-cream/70 transition-colors hover:border-gold hover:text-gold">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.5" cy="6.5" r="1" fill="currentColor" /></svg>
+              </a>
+              <a href={wpp} target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" className="grid h-10 w-10 place-items-center rounded-full border border-cream/15 text-cream/70 transition-colors hover:border-gold hover:text-gold">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.945C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.523 5.268l-.999 3.648 3.815-1.002zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z" /></svg>
+              </a>
+            </div>
           </div>
-          {[["Cardápio", [["Os Campeões", "#cardapio"], ["Combos", "#combos"], ["Diferenciais", "#diferenciais"]]], ["Sobre", [["Nossa história", "#historia"], ["Onde estamos", "#onde-estamos"]]]].map(([title, links]) => (
+
+          {[["Cardápio", [["Os Campeões", "#cardapio"], ["Combos", "#combos"], ["Diferenciais", "#diferenciais"]]], ["Sobre", [["Galeria", "#galeria"], ["Monte seu combo", "#monte"], ["Onde estamos", "#onde-estamos"]]]].map(([title, links]) => (
             <nav key={title as string} aria-label={title as string}>
               <h3 className="font-serif text-sm font-bold uppercase tracking-wide text-gold">{title as string}</h3>
-              <ul className="mt-4 space-y-2">{(links as string[][]).map(([l, h]) => (<li key={h}><a href={h} className="text-sm text-cream/65 transition-colors hover:text-cream">{l}</a></li>))}</ul>
+              <ul className="mt-4 space-y-2.5">{(links as string[][]).map(([l, h]) => (<li key={h}><a href={h} className="inline-flex items-center gap-2 text-sm text-cream/60 transition-colors hover:text-cream"><span className="h-1 w-1 rounded-full bg-gold/50" />{l}</a></li>))}</ul>
             </nav>
           ))}
+
+          {/* contato */}
           <div>
             <h3 className="font-serif text-sm font-bold uppercase tracking-wide text-gold">Contato</h3>
-            <ul className="mt-4 space-y-2 text-sm text-cream/65">
-              <li><a href={wpp} target="_blank" rel="noopener noreferrer" className="hover:text-cream">WhatsApp</a></li>
-              <li><a href={site.instagram.url} target="_blank" rel="noopener noreferrer" className="hover:text-cream">{site.instagram.handle}</a></li>
+            <ul className="mt-4 space-y-3 text-sm text-cream/60">
+              <li className="flex items-start gap-2.5">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 shrink-0 text-gold/70"><path d="M21 10c0 6-9 12-9 12s-9-6-9-12a9 9 0 0118 0z" /><circle cx="12" cy="10" r="3" /></svg>
+                <span>{site.address.street}<br />{site.address.area}</span>
+              </li>
+              <li className="flex items-start gap-2.5">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="mt-0.5 shrink-0 text-gold/70"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" strokeLinecap="round" /></svg>
+                <span>{site.hours.find((h) => h.hours !== "Fechado")?.day} · {site.hours.find((h) => h.hours !== "Fechado")?.hours}<br /><a href="#onde-estamos" onClick={(e) => goTo(e, "#onde-estamos")} className="text-cream/45 underline-offset-2 transition-colors hover:text-gold hover:underline">ver todos os horários</a></span>
+              </li>
+              <li className="flex items-center gap-2.5">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="shrink-0 text-gold/70"><path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.945C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 001.523 5.268l-.999 3.648 3.815-1.002z" /></svg>
+                <a href={wpp} target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-cream">Chamar no WhatsApp</a>
+              </li>
             </ul>
           </div>
         </div>
+
+        {/* barra inferior */}
         <div className="border-t border-cream/10">
           <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-2 px-6 py-5 text-xs text-cream/45 sm:flex-row md:px-10">
             <p>© 2026 {site.name} — {site.tagline}.</p>
-            <p>Feito com capricho, na chapa.</p>
+            <p>
+              Feito por{" "}
+              <a href="https://www.instagram.com/dovratech" target="_blank" rel="noopener noreferrer" className="font-semibold tracking-wide text-cream/70 transition-colors hover:text-gold">Dovra Tech</a>
+            </p>
           </div>
         </div>
       </footer>

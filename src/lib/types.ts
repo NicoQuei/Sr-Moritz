@@ -21,6 +21,9 @@ export interface Combo {
   price: number; // preço "por"
   image: string;
   highlight?: boolean;
+  serves?: string; // ex. "1 pessoa", "2 pessoas"
+  items?: string[]; // o que vem no combo
+  badge?: string; // ex. "Mais pedido"
 }
 
 export interface Review {
