@@ -268,8 +268,9 @@ export default function SrMoritzLanding() {
         <motion.div initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 1, ease: EASE, delay: 0.3 }} className="pointer-events-none absolute bottom-0 left-2 hidden w-44 opacity-90 lg:block xl:w-52">
           <Mascot pose="boas-vindas" priority sizes="200px" className="h-auto w-full" />
         </motion.div>
-        <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 1, ease: EASE, delay: 0.45 }} className="pointer-events-none absolute bottom-0 right-2 hidden w-44 opacity-90 lg:block xl:w-52">
-          <Mascot pose="apresentando" sizes="200px" className="h-auto w-full" />
+        <motion.div initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 1, ease: EASE, delay: 0.45 }} className="pointer-events-none absolute bottom-0 right-2 hidden w-[157px] opacity-90 lg:block xl:w-[185px]">
+          {/* pose mais "alta" no PNG: estreita p/ igualar altura do personagem e sobe p/ alinhar os pés ao da esquerda */}
+          <Mascot pose="apresentando" sizes="200px" className="h-auto w-full -translate-y-[5.8%]" />
         </motion.div>
 
         <div className="relative z-10 mx-auto flex max-w-2xl flex-col items-center">
