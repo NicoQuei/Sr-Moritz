@@ -1,0 +1,53 @@
+@import "tailwindcss";
+
+/* ============================================================
+   Sr. Moritz — tokens da marca (Tailwind v4 via @theme)
+   verde + dourado + creme · Playfair Display / DM Sans
+   ============================================================ */
+
+@theme {
+  /* Base clara */
+  --color-cream: #faf7f0;
+  --color-paper: #f5f0e1;
+  --color-surface: #fffdf8;
+
+  /* Verde */
+  --color-moritz-900: #1e3a1e;
+  --color-moritz-700: #2d5a27;
+  --color-moritz-500: #3d7a35;
+
+  /* Dourado */
+  --color-gold: #d4a017;
+  --color-gold-deep: #b5860f;
+
+  /* Tinta */
+  --color-ink: #2c2c2c;
+  --color-ink-soft: #8c8578;
+
+  /* Fontes (variáveis vêm do next/font no layout) */
+  --font-serif: var(--font-playfair), Georgia, serif;
+  --font-sans: var(--font-dmsans), system-ui, sans-serif;
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    background: var(--color-cream);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: var(--color-gold);
+    color: var(--color-moritz-900);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

@@ -1,0 +1,87 @@
+/* sr-moritz.css — efeitos vintage do Sr. Moritz (estética brand-book).
+   Importado pelo componente: import "./sr-moritz.css"; */
+
+/* grão de papel (overlay fixo) */
+.sm-grain {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.4;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+}
+
+/* selo carimbado — oscilação contínua */
+.sm-seal {
+  animation: sm-wobble 6s ease-in-out infinite;
+  transform-origin: center;
+}
+@keyframes sm-wobble {
+  0%,
+  100% {
+    transform: rotate(-13deg);
+  }
+  50% {
+    transform: rotate(-7deg);
+  }
+}
+
+/* marquee */
+.sm-marquee-track {
+  display: flex;
+  white-space: nowrap;
+  width: max-content;
+  animation: sm-scroll 32s linear infinite;
+}
+.sm-marquee:hover .sm-marquee-track {
+  animation-play-state: paused;
+}
+@keyframes sm-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* conector pontilhado */
+.sm-dotted {
+  background-image: repeating-linear-gradient(
+    to right,
+    rgba(212, 160, 23, 0.6) 0 8px,
+    transparent 8px 16px
+  );
+}
+
+/* leve flutuação / giro lento */
+.sm-float {
+  animation: sm-float 7s ease-in-out infinite;
+}
+@keyframes sm-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+.sm-spin {
+  animation: sm-spin 90s linear infinite;
+}
+@keyframes sm-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sm-seal,
+  .sm-marquee-track,
+  .sm-float,
+  .sm-spin {
+    animation: none !important;
+  }
+}
